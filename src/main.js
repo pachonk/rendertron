@@ -24,12 +24,17 @@ const url = require('url');
 const chromeLauncher = require('chrome-launcher');
 const compression = require('compression');
 const express = require('express');
+const bodyParser = require("body-parser");
 const now = require('performance-now');
 const uuidv4 = require('uuid/v4');
 const cache = require('./cache');
 const renderer = require('./renderer');
+const htmlRenderer = require('./html-renderer');
 
 const app = express();
+
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
 
 const CONFIG_PATH = path.resolve(__dirname, '../config.json');
 const PROGRESS_BAR_PATH = path.resolve(__dirname, '../node_modules/progress-bar-element/progress-bar.html');
@@ -47,6 +52,7 @@ if (fs.existsSync(CONFIG_PATH)) {
 if (!module.parent && !!config['cache']) {
   app.get('/render/:url(*)', cache.middleware());
   app.get('/screenshot/:url(*)', cache.middleware());
+  app.post('/screenshot', cache.middleware());
   // Always clear the cache for now, while things are changing.
   cache.clearCache();
 }
@@ -106,6 +112,10 @@ if (!!config['debug']) {
     console.log('Screenshot requested for ' + req.params.url);
     next();
   });
+  app.post('/screenshot', (req, res, next) => {
+    console.log('Screenshot requested for ' + req.params.url);
+    next();
+  });
 }
 
 app.get('/render/:url(*)', async(request, response) => {
@@ -150,6 +160,24 @@ app.get('/screenshot/:url(*)', async(request, response) => {
   }
 });
 
+app.post('/screenshot', async(request, response) => {
+  try {
+    const start = now();
+    console.log(request.body.html)
+    const result = await htmlRenderer.captureScreenshot(request.body.html, request.query, config);
+    const img = new Buffer(result, 'base64');
+    response.set({
+      'Content-Type': 'image/jpeg',
+      'Content-Length': img.length
+    });
+    response.end(img);
+    track('screenshot', now() - start);
+  } catch (err) {
+    response.status(400).send('Cannot render requested URL');
+    console.error('Cannot render requested URL');
+    console.error(err);
+  }
+});
 app.get('/_ah/health', (request, response) => response.send('OK'));
 
 app.stop = async() => {
