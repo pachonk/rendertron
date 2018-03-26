@@ -24,7 +24,7 @@ const url = require('url');
 const chromeLauncher = require('chrome-launcher');
 const compression = require('compression');
 const express = require('express');
-const bodyParser = require("body-parser");
+const bodyParser = require('body-parser');
 const now = require('performance-now');
 const uuidv4 = require('uuid/v4');
 const cache = require('./cache');
@@ -33,8 +33,10 @@ const htmlRenderer = require('./html-renderer');
 
 const app = express();
 
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({
+  extended: true,
+  limit: '50mb'
+}));
 
 const CONFIG_PATH = path.resolve(__dirname, '../config.json');
 const PROGRESS_BAR_PATH = path.resolve(__dirname, '../node_modules/progress-bar-element/progress-bar.html');
